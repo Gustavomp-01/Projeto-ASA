@@ -165,24 +165,87 @@ void comprimirB(vector<Bloco> &Blocos, vector<int> &todos_b){
     }
 }
 
-// Impressões de teste (apagar ou comentar antes de submeter ao Mooshak)
-void imprimirDebug(const vector<Bloco> &Blocos, const vector<int> &todos_b){
+// Ela vai consultar o vetor Blocos, alterar a Arvore (Altera o valor e o próximo do nó)
+void CalcularTorres(const vector<Bloco> &Blocos, ArvoreSegmentos &arv, vector<int> &valor, vector<int> &prox){
 
-    for(int i = 0; i < (int)Blocos.size(); i++){
-        printf("Bloco %d -> %d %d %d\n", i, Blocos[i].a, Blocos[i].b, Blocos[i].h);
+    // Será tratado de grupos em grupos (Grupo a = 0 ... grupo a = x)
+    
+    int n = (int)Blocos.size(); // Número de Blocos
+    int i = 0; // Onde começa o grupo atual
+
+
+    // Cada volta desse ciclo trata um grupo inteiro
+    // While exterior
+    while(i<n){ // Quando i chegar a N já se passaram todos os blocos
+
+        // Encontrar o fim do grupo
+        // Esse ciclo vai encontrar cada grupo de a
+        int j = i;
+        while(j < n && Blocos[j].a == Blocos[i].a ){
+            j++;
+        }
+        // 1º passagem de cada grupo : Calcular o valor e prox de cada bloco do grupo (Apenas consultas)
+        for(int k = i; k < j; k++){
+
+            // Procuramos na arvore qual a melhor torre que cabe em cima do bloco k
+            // Para isso precisamos saber em qual caixa da arvore o bloco está, isso está na pos_b
+            pair<int,int> melhor = arv.consultar(Blocos[k].pos_b); 
+
+            //O valor da melhor torre com este bloco na base é a altura dele + o valor da torre que fica em cima 
+            // Somamos a altura do bloco + a altura da melhor torre que poderia ir em cima dele
+            valor[k] = Blocos[k].h + melhor.first; // Cada <int,int> guarda o <altura da torre, indice do bloco (posição)> 
+
+            //Agora guardamos o indice da torre que fica em cima
+            prox[k] = melhor.second; // Second de melhor guarda o valor do indice do bloco
+            // Se não tiver nada em cima ele vai guardar(0,-1) por tanto esse é o ultimo bloco (Nesse caso)
+        }
+
+        // 2º passagem: Inserir na árvore todos os blocos do grupo (Somente atualização)
+        for(int k = i; k < j; k++){
+            arv.atualizar(Blocos[k].pos_b, valor[k], k); // Na caixa do bloco k, escreve o valor[k], que veio do bloco k
+        }
+
+        i = j; // Atualizamos o i para o grupo seguinte, assim percorremos todos os blocos e conseguiremos catalogar todos os valores de a
     }
 
-    printf("Array de todos os b's ordenado e sem repetição: ");
-    for (int i = 0; i < (int)todos_b.size(); i++) {
-    printf("%d", todos_b[i]);
-    }
-    printf("\n");
 
-    printf("Posição de cada b no array de todos os b's: ");
-    for (int i = 0; i < (int)Blocos.size(); i++) {
-    printf("%d", Blocos[i].pos_b);
-    }
 }
+
+int EncontrarMelhor(const vector<int> &valor){
+
+    int melhor = 0; // Indice(posição) do melhor até agora
+
+    for(int k = 1; k < (int)valor.size(); k++){
+        if(valor[k] > valor[melhor]){
+            melhor = k;
+        }
+    }
+
+    return melhor;
+}
+
+// Segue a cadeia de prox a partir da base e imprime a torre 
+void ImprimirTorre(const vector<Bloco> &Blocos, const vector<int> &valor, const vector<int> &prox, int base){
+
+
+    vector<int> torre;
+    int k = base;
+    while(k != -1){ // Quando prox = -1 quer dizer que não há mais um próximo bloco
+
+        torre.push_back(k); // Adiciona o bloco de indice k na torre
+        k = prox[k]; // O k salta para o bloco que está por cima
+    }
+
+    // Linha 1: Altura total da torre e número de blocos
+    printf("%d %d\n", valor[base] , (int)torre.size());
+
+    // Um bloco por linha, da base até o topo
+    for(int i = 0; i < (int)torre.size(); i++){
+        printf("%d %d %d\n", Blocos[torre[i]].a, Blocos[torre[i]].b, Blocos[torre[i]].h);
+    }
+
+}
+
 
 int main(){
 
@@ -201,7 +264,11 @@ int main(){
     vector<int> valor((int)Blocos.size()); // Vetor valor com o tamanho de Blocos (Melhor torre com o bloco k na base)
     vector<int> prox((int)Blocos.size(), -1); // Vetor prox com tamanho de Blocos (Bloco que fica em cima de k) Colocamos -1 para no começo = nenhum
 
-    imprimirDebug(Blocos, todos_b);
+    CalcularTorres(Blocos,arv, valor, prox);
+    
+    int base = EncontrarMelhor(valor);
+
+    ImprimirTorre(Blocos, valor, prox, base);
 
     return 0;
 }
